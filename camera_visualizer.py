@@ -4,10 +4,76 @@
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.font_manager as fm
 import numpy as np
 from typing import List, Dict, Any
 import io
 import base64
+import os
+import platform
+
+
+def setup_chinese_font():
+    """设置中文字体，兼容不同操作系统"""
+    system = platform.system()
+    
+    # 尝试不同的中文字体
+    font_candidates = []
+    
+    if system == "Windows":
+        font_candidates = [
+            'Microsoft YaHei',
+            'SimHei',
+            'SimSun',
+            'KaiTi',
+            'FangSong'
+        ]
+    elif system == "Darwin":  # macOS
+        font_candidates = [
+            'Arial Unicode MS',
+            'Heiti TC',
+            'Heiti SC',
+            'PingFang SC',
+            'Hiragino Sans GB'
+        ]
+    else:  # Linux
+        font_candidates = [
+            'WenQuanYi Micro Hei',
+            'WenQuanYi Zen Hei',
+            'Noto Sans CJK SC',
+            'Source Han Sans CN',
+            'DejaVu Sans'
+        ]
+    
+    # 获取系统可用字体
+    available_fonts = [f.name for f in fm.fontManager.ttflist]
+    
+    # 查找可用的中文字体
+    selected_font = None
+    for font in font_candidates:
+        if font in available_fonts:
+            selected_font = font
+            break
+    
+    # 如果没找到合适的字体，使用备用方案
+    if selected_font is None:
+        # 尝试查找任何包含"中文"、"Chinese"、"CJK"的字体
+        for font_name in available_fonts:
+            if any(keyword in font_name.lower() for keyword in ['chinese', 'cjk', 'han', 'hei', 'song']):
+                selected_font = font_name
+                break
+    
+    # 设置matplotlib字体参数
+    if selected_font:
+        plt.rcParams['font.sans-serif'] = [selected_font, 'Arial', 'sans-serif']
+        plt.rcParams['font.family'] = 'sans-serif'
+    else:
+        # 如果完全找不到中文字体，使用英文并提供警告
+        plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'sans-serif']
+        print("警告: 未找到合适的中文字体，部分中文可能显示为方框")
+    
+    plt.rcParams['axes.unicode_minus'] = False
+    return selected_font
 
 
 class CameraVisualizer:
@@ -15,8 +81,39 @@ class CameraVisualizer:
     
     def __init__(self):
         # 设置中文字体
-        plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS', 'DejaVu Sans']
-        plt.rcParams['axes.unicode_minus'] = False
+        self.font_name = setup_chinese_font()
+        
+        # 如果没有找到中文字体，显示警告但不中断运行
+        if self.font_name is None:
+            import warnings
+            warnings.warn("未检测到中文字体，图表将使用英文标签。如需中文显示，请安装中文字体包。", 
+                         UserWarning, stacklevel=2)
+        
+    def _ensure_chinese_display(self):
+        """确保中文正常显示的辅助方法"""
+        if self.font_name is None:
+            # 如果没有中文字体，返回英文标签的映射
+            return {
+                '沙盘摄像头布局图': 'Camera Layout Plan',
+                '沙盘尺寸': 'Sandbox Size',
+                '摄像头数量': 'Camera Count',
+                '安装高度': 'Installation Height',
+                '视场角': 'Field of View',
+                '覆盖范围': 'Coverage Area',
+                '覆盖率': 'Coverage Rate',
+                '总成本': 'Total Cost',
+                '单摄像头覆盖': 'Single Camera Coverage',
+                '宽度': 'Width',
+                '高度': 'Height',
+                '沙盘区域': 'Sandbox Area',
+                '摄像头位置': 'Camera Position',
+                '摄像头3D布局图': '3D Camera Layout',
+                '摄像头覆盖热力图': 'Camera Coverage Heatmap',
+                '覆盖摄像头数量': 'Coverage Camera Count',
+                '摄像头': 'Camera',
+                '成本效益': 'Cost Efficiency'
+            }
+        return {}
     
     def create_layout_plot(self, calculation_result: Dict[str, Any], 
                           show_coverage: bool = True, 
@@ -33,6 +130,9 @@ class CameraVisualizer:
             str: Base64编码的图片数据
         """
         fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+        
+        # 获取文本标签映射
+        labels = self._ensure_chinese_display()
         
         sandbox_width = calculation_result['sandbox_dimensions']['width']
         sandbox_height = calculation_result['sandbox_dimensions']['height']
@@ -63,8 +163,9 @@ class CameraVisualizer:
                 ax.add_patch(coverage_rect)
                 
                 # 添加覆盖范围标签
+                coverage_label = labels.get('覆盖范围', '覆盖范围')
                 ax.text(pos['x'], pos['y'] - coverage['height']/3, 
-                       f'覆盖范围\n{coverage["width"]:.1f}×{coverage["height"]:.1f}m',
+                       f'{coverage_label}\n{coverage["width"]:.1f}×{coverage["height"]:.1f}m',
                        ha='center', va='center', fontsize=8, 
                        bbox=dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8))
         
@@ -90,34 +191,51 @@ class CameraVisualizer:
         # 设置坐标轴
         ax.set_xlim(-1, sandbox_width + 1)
         ax.set_ylim(-1, sandbox_height + 1)
-        ax.set_xlabel('宽度 (米)', fontsize=12)
-        ax.set_ylabel('高度 (米)', fontsize=12)
-        ax.set_title(f'沙盘摄像头布局图\n沙盘尺寸: {sandbox_width}×{sandbox_height}m, '
-                    f'摄像头数量: {len(camera_positions)}个', fontsize=14, fontweight='bold')
+        
+        width_label = labels.get('宽度', '宽度') + ' (米)'
+        height_label = labels.get('高度', '高度') + ' (米)'
+        ax.set_xlabel(width_label, fontsize=12)
+        ax.set_ylabel(height_label, fontsize=12)
+        
+        # 标题
+        sandbox_size_label = labels.get('沙盘尺寸', '沙盘尺寸')
+        camera_count_label = labels.get('摄像头数量', '摄像头数量')
+        title_text = f'{labels.get("沙盘摄像头布局图", "沙盘摄像头布局图")}\n{sandbox_size_label}: {sandbox_width}×{sandbox_height}m, {camera_count_label}: {len(camera_positions)}个'
+        ax.set_title(title_text, fontsize=14, fontweight='bold')
         
         # 添加网格
         ax.grid(True, alpha=0.3)
         ax.set_aspect('equal')
         
         # 添加图例
+        sandbox_area_label = labels.get('沙盘区域', '沙盘区域')
+        camera_position_label = labels.get('摄像头位置', '摄像头位置')
+        coverage_range_label = labels.get('覆盖范围', '覆盖范围')
+        
         legend_elements = [
-            patches.Patch(color='lightgray', alpha=0.3, label='沙盘区域'),
-            patches.Circle((0, 0), 0.1, facecolor='red', label='摄像头位置'),
+            patches.Patch(color='lightgray', alpha=0.3, label=sandbox_area_label),
+            patches.Circle((0, 0), 0.1, facecolor='red', label=camera_position_label),
         ]
         if show_coverage:
             legend_elements.append(
-                patches.Patch(color='blue', alpha=0.2, label='覆盖范围')
+                patches.Patch(color='blue', alpha=0.2, label=coverage_range_label)
             )
         
         ax.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1.15, 1))
         
         # 添加统计信息
+        install_height_label = labels.get('安装高度', '安装高度')
+        fov_label = labels.get('视场角', '视场角')
+        single_coverage_label = labels.get('单摄像头覆盖', '单摄像头覆盖')
+        coverage_rate_label = labels.get('覆盖率', '覆盖率')
+        total_cost_label = labels.get('总成本', '总成本')
+        
         stats_text = (
-            f"安装高度: {coverage['camera_height']}m\n"
-            f"视场角: {coverage['horizontal_fov']}°×{coverage['vertical_fov']}°\n"
-            f"单摄像头覆盖: {coverage['width']:.1f}×{coverage['height']:.1f}m\n"
-            f"覆盖率: {calculation_result['coverage_ratio']*100:.1f}%\n"
-            f"总成本: ¥{calculation_result['total_cost']:,}"
+            f"{install_height_label}: {coverage['camera_height']}m\n"
+            f"{fov_label}: {coverage['horizontal_fov']}°×{coverage['vertical_fov']}°\n"
+            f"{single_coverage_label}: {coverage['width']:.1f}×{coverage['height']:.1f}m\n"
+            f"{coverage_rate_label}: {calculation_result['coverage_ratio']*100:.1f}%\n"
+            f"{total_cost_label}: ¥{calculation_result['total_cost']:,}"
         )
         
         ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
@@ -147,6 +265,9 @@ class CameraVisualizer:
         """
         fig = plt.figure(figsize=(12, 8))
         ax = fig.add_subplot(111, projection='3d')
+        
+        # 获取文本标签映射
+        labels = self._ensure_chinese_display()
         
         sandbox_width = calculation_result['sandbox_dimensions']['width']
         sandbox_height = calculation_result['sandbox_dimensions']['height']
@@ -194,14 +315,22 @@ class CameraVisualizer:
                        'b-', alpha=0.3, linewidth=0.5)
             
             # 摄像头标签
-            ax.text(pos['x'], pos['y'], pos['z'] + 0.3, f'摄像头{i+1}', 
+            camera_label = labels.get('摄像头', '摄像头')
+            ax.text(pos['x'], pos['y'], pos['z'] + 0.3, f'{camera_label}{i+1}', 
                    fontsize=8, ha='center')
         
         # 设置坐标轴
-        ax.set_xlabel('宽度 (米)')
-        ax.set_ylabel('高度 (米)')
-        ax.set_zlabel('高度 (米)')
-        ax.set_title(f'摄像头3D布局图\n安装高度: {camera_height}m')
+        width_label = labels.get('宽度', '宽度')
+        height_label = labels.get('高度', '高度')
+        install_height_label = labels.get('安装高度', '安装高度')
+        
+        ax.set_xlabel(width_label)
+        ax.set_ylabel(height_label)
+        ax.set_zlabel(height_label)
+        
+        # 标题
+        title_3d = labels.get('摄像头3D布局图', '摄像头3D布局图')
+        ax.set_title(f'{title_3d}\n{install_height_label}: {camera_height}m')
         
         # 设置视角
         ax.view_init(elev=20, azim=45)
@@ -230,6 +359,9 @@ class CameraVisualizer:
             str: Base64编码的图片数据
         """
         fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+        
+        # 获取文本标签映射
+        labels = self._ensure_chinese_display()
         
         sandbox_width = calculation_result['sandbox_dimensions']['width']
         sandbox_height = calculation_result['sandbox_dimensions']['height']
@@ -261,7 +393,8 @@ class CameraVisualizer:
         
         # 添加颜色条
         cbar = plt.colorbar(im, ax=ax)
-        cbar.set_label('覆盖摄像头数量', fontsize=12)
+        coverage_count_label = labels.get('覆盖摄像头数量', '覆盖摄像头数量')
+        cbar.set_label(coverage_count_label, fontsize=12)
         
         # 绘制摄像头位置
         for i, pos in enumerate(camera_positions):
@@ -272,9 +405,13 @@ class CameraVisualizer:
                    color='white', fontsize=10)
         
         # 设置坐标轴
-        ax.set_xlabel('宽度 (米)', fontsize=12)
-        ax.set_ylabel('高度 (米)', fontsize=12)
-        ax.set_title('摄像头覆盖热力图', fontsize=14, fontweight='bold')
+        width_label = labels.get('宽度', '宽度') + ' (米)'
+        height_label = labels.get('高度', '高度') + ' (米)'
+        heatmap_title = labels.get('摄像头覆盖热力图', '摄像头覆盖热力图')
+        
+        ax.set_xlabel(width_label, fontsize=12)
+        ax.set_ylabel(height_label, fontsize=12)
+        ax.set_title(heatmap_title, fontsize=14, fontweight='bold')
         ax.grid(True, alpha=0.3)
         
         plt.tight_layout()
@@ -303,38 +440,48 @@ class CameraVisualizer:
         
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
         
+        # 获取文本标签映射
+        labels = self._ensure_chinese_display()
+        
         heights = [result['height'] for result in height_analysis]
         camera_counts = [result['cameras'] for result in height_analysis]
         coverage_ratios = [result['coverage_ratio'] * 100 for result in height_analysis]
         costs = [result['cost'] for result in height_analysis]
         
+        # 获取标签
+        install_height_label = labels.get('安装高度', '安装高度') + ' (米)'
+        camera_count_label = labels.get('摄像头数量', '摄像头数量')
+        coverage_rate_label = labels.get('覆盖率', '覆盖率') + ' (%)'
+        total_cost_label = labels.get('总成本', '总成本') + ' (元)'
+        cost_efficiency_label = labels.get('成本效益', '成本效益') + ' (覆盖率/千元)'
+        
         # 摄像头数量 vs 高度
         ax1.plot(heights, camera_counts, 'bo-', linewidth=2, markersize=6)
-        ax1.set_xlabel('安装高度 (米)')
-        ax1.set_ylabel('摄像头数量')
-        ax1.set_title('摄像头数量 vs 安装高度')
+        ax1.set_xlabel(install_height_label)
+        ax1.set_ylabel(camera_count_label)
+        ax1.set_title(f'{camera_count_label} vs {install_height_label.split(" ")[0]}')
         ax1.grid(True, alpha=0.3)
         
         # 覆盖率 vs 高度
         ax2.plot(heights, coverage_ratios, 'go-', linewidth=2, markersize=6)
-        ax2.set_xlabel('安装高度 (米)')
-        ax2.set_ylabel('覆盖率 (%)')
-        ax2.set_title('覆盖率 vs 安装高度')
+        ax2.set_xlabel(install_height_label)
+        ax2.set_ylabel(coverage_rate_label)
+        ax2.set_title(f'{coverage_rate_label.split(" ")[0]} vs {install_height_label.split(" ")[0]}')
         ax2.grid(True, alpha=0.3)
         
         # 成本 vs 高度
         ax3.plot(heights, costs, 'ro-', linewidth=2, markersize=6)
-        ax3.set_xlabel('安装高度 (米)')
-        ax3.set_ylabel('总成本 (元)')
-        ax3.set_title('总成本 vs 安装高度')
+        ax3.set_xlabel(install_height_label)
+        ax3.set_ylabel(total_cost_label)
+        ax3.set_title(f'{total_cost_label.split(" ")[0]} vs {install_height_label.split(" ")[0]}')
         ax3.grid(True, alpha=0.3)
         
         # 成本效益分析
         efficiency = [coverage_ratios[i] / (costs[i] / 1000) for i in range(len(costs))]
         ax4.plot(heights, efficiency, 'mo-', linewidth=2, markersize=6)
-        ax4.set_xlabel('安装高度 (米)')
-        ax4.set_ylabel('成本效益 (覆盖率/千元)')
-        ax4.set_title('成本效益 vs 安装高度')
+        ax4.set_xlabel(install_height_label)
+        ax4.set_ylabel(cost_efficiency_label)
+        ax4.set_title(f'{cost_efficiency_label.split(" ")[0]} vs {install_height_label.split(" ")[0]}')
         ax4.grid(True, alpha=0.3)
         
         plt.tight_layout()

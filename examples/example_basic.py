@@ -23,9 +23,11 @@ def basic_example():
     camera_height = 5.0   # 摄像头安装高度 5米
     horizontal_fov = 60.0 # 水平视场角 60度
     vertical_fov = 45.0   # 垂直视场角 45度
+    camera_price = 1500.0 # 摄像头单价 1500元
     
     print(f"沙盘规格: {sandbox_width} × {sandbox_height} 米")
     print(f"摄像头参数: 高度{camera_height}米, 视场角{horizontal_fov}°×{vertical_fov}°")
+    print(f"摄像头单价: ¥{camera_price:,.0f}")
     print()
     
     # 计算单个摄像头的覆盖范围
@@ -39,13 +41,14 @@ def basic_example():
     # 计算所需摄像头数量
     result = calculator.calculate_camera_count(
         sandbox_width, sandbox_height, camera_height,
-        horizontal_fov, vertical_fov
+        horizontal_fov, vertical_fov, camera_price=camera_price
     )
     
     print("摄像头布局计算结果:")
     print(f"  所需摄像头总数: {result['total_cameras']} 个")
     print(f"  布局方式: {result['cameras_x']} × {result['cameras_y']} 阵列")
     print(f"  覆盖率: {result['coverage_ratio']*100:.1f}%")
+    print(f"  摄像头单价: ¥{result['camera_price']:,.0f}")
     print(f"  预估总成本: ¥{result['total_cost']:,}")
     print()
     

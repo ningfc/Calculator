@@ -7,8 +7,9 @@
 ### 🎯 核心功能
 - **智能计算**: 根据摄像头视场角和安装高度自动计算覆盖范围
 - **最优布局**: 自动计算所需摄像头数量和最优布局方案
-- **成本估算**: 提供设备成本和安装成本的详细预算
+- **成本估算**: 支持自定义摄像头单价，提供精确的成本预算
 - **复杂度评估**: 评估安装复杂度并提供专业建议
+- **多方案对比**: 支持不同价位摄像头的成本效益分析
 
 ### 📊 可视化展示
 - **2D布局图**: 清晰展示摄像头位置和覆盖范围
@@ -20,6 +21,7 @@
 - **镜头参数计算**: 支持通过焦距和传感器尺寸计算视场角
 - **高度优化**: 自动寻找最优安装高度
 - **重叠控制**: 可调节摄像头覆盖重叠比例
+- **价格设置**: 支持自定义摄像头单价进行精确成本分析
 - **导出功能**: 支持配置报告和位置数据导出
 
 ## 技术架构
@@ -30,7 +32,8 @@
 ├── main.py                 # Web应用主程序
 ├── examples/               # 示例代码
 │   ├── example_basic.py    # 基础示例
-│   └── example_advanced.py # 高级示例
+│   ├── example_advanced.py # 高级示例
+│   └── cost_analysis_demo.py # 成本分析示例
 └── requirements.txt        # 依赖包列表
 ```
 
@@ -64,6 +67,19 @@ python examples/example_basic.py
 
 # 高级示例（包含可视化）
 python examples/example_advanced.py
+
+# 成本分析示例
+python examples/cost_analysis_demo.py
+
+# 字体测试（验证中文显示）
+python test_font_fix.py
+```
+
+### 4. 发布前检查
+
+```bash
+# 运行完整检查
+./pre_release_check.sh
 ```
 
 ## 使用指南
@@ -73,7 +89,8 @@ python examples/example_advanced.py
 1. **参数配置**
    - 在左侧边栏输入沙盘尺寸
    - 选择摄像头参数输入方式（直接输入视场角或通过镜头参数计算）
-   - 设置安装高度和高级参数
+   - 设置安装高度和摄像头单价
+   - 调整重叠比例等高级参数
 
 2. **查看结果**
    - 查看关键指标：摄像头数量、覆盖率、成本等
@@ -105,7 +122,8 @@ result = calculator.calculate_camera_count(
     camera_height=5.0,       # 安装高度
     horizontal_fov=60.0,     # 水平视场角
     vertical_fov=45.0,       # 垂直视场角
-    overlap_ratio=0.2        # 重叠比例
+    overlap_ratio=0.2,       # 重叠比例
+    camera_price=2000.0      # 摄像头单价
 )
 
 # 寻找最优配置
@@ -114,7 +132,8 @@ optimal = calculator.calculate_optimal_height(
     sandbox_height=8.0,
     horizontal_fov=60.0,
     vertical_fov=45.0,
-    max_cameras=20
+    max_cameras=20,
+    camera_price=2000.0
 )
 
 # 生成可视化图表
@@ -163,6 +182,7 @@ layout_img = visualizer.create_layout_plot(result)
 | 水平视场角 | 摄像头水平视野角度 | 度 | 30-120 |
 | 垂直视场角 | 摄像头垂直视野角度 | 度 | 20-90 |
 | 重叠比例 | 相邻摄像头覆盖重叠率 | % | 10-30 |
+| 摄像头单价 | 单个摄像头设备价格 | 元 | 500-10000 |
 
 ## 常见摄像头规格
 
@@ -173,6 +193,64 @@ layout_img = visualizer.create_layout_plot(result)
 | 标准 | 8.0 | 36.3° | 27.7° | 大型沙盘，标准安装 |
 | 中焦 | 12.0 | 24.8° | 18.9° | 超大沙盘，远距离监控 |
 | 长焦 | 16.0 | 18.8° | 14.4° | 特定区域，精确监控 |
+
+## 摄像头价格参考
+
+| 价格区间 | 典型价格 | 设备特点 | 适用场景 |
+|----------|----------|----------|----------|
+| 经济型 | ¥500-1000 | 基础监控，标清画质 | 预算有限的基础监控 |
+| 标准型 | ¥1000-2500 | 高清网络，稳定性好 | 一般商用监控需求 |
+| 高端型 | ¥2500-5000 | 4K画质，智能功能 | 高质量监控要求 |
+| 专业型 | ¥5000-8000 | 工业级，特殊环境 | 专业应用场景 |
+| 顶级型 | ¥8000+ | AI分析，多功能集成 | 高端智能监控系统 |
+
+## 常见问题解决
+
+### 中文字体显示问题
+如果图表中中文显示为方框，请参考：[字体问题解决指南](FONT_FIX_GUIDE.md)
+
+**快速解决方案**：
+- **Windows**: 通常已预装，如有问题请安装中文语言包
+- **macOS**: 使用Arial Unicode MS（通常已预装）
+- **Linux**: 安装中文字体包
+  ```bash
+  sudo apt-get install fonts-noto-cjk fonts-wqy-zenhei
+  ```
+- **Docker**: 使用项目提供的Dockerfile（已包含字体）
+
+### 部署选项
+
+#### 本地部署
+```bash
+streamlit run main.py
+```
+
+#### Docker部署
+
+**快速启动**：
+```bash
+# 使用docker-compose（推荐）
+docker-compose up -d
+
+# 访问应用
+# 生产版本：http://localhost:8501
+# 开发版本：http://localhost:8502 (如果启动dev服务)
+```
+
+**手动部署**：
+```bash
+# 构建镜像
+docker build -t camera-calculator .
+
+# 运行容器
+docker run -d \
+  --name camera-calculator \
+  -p 8501:8501 \
+  -v $(pwd)/output:/app/output \
+  camera-calculator
+```
+
+**详细部署指南**：查看 [Docker部署完整流程](DOCKER_DEPLOYMENT_GUIDE.md)
 
 ## 输出文件
 
@@ -186,7 +264,7 @@ layout_img = visualizer.create_layout_plot(result)
 ## 依赖包
 
 - `streamlit` - Web应用框架
-- `matplotlib` - 图表绘制
+- `matplotlib` - 图表绘制（已解决中文字体问题）
 - `numpy` - 数值计算
 - `pandas` - 数据处理
 

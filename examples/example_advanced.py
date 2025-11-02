@@ -28,6 +28,7 @@ def advanced_example():
     focal_length = 8.0     # 焦距 8mm
     sensor_width = 6.4     # 传感器宽度 6.4mm
     sensor_height = 4.8    # 传感器高度 4.8mm
+    camera_price = 3000.0  # 摄像头单价 3000元（高端型号）
     
     horizontal_fov = calculate_viewing_angle_from_lens(focal_length, sensor_width)
     vertical_fov = calculate_viewing_angle_from_lens(focal_length, sensor_height)
@@ -35,6 +36,7 @@ def advanced_example():
     print(f"沙盘规格: {sandbox_width} × {sandbox_height} 米")
     print(f"镜头参数: 焦距{focal_length}mm, 传感器{sensor_width}×{sensor_height}mm")
     print(f"计算得到视场角: {horizontal_fov:.1f}° × {vertical_fov:.1f}°")
+    print(f"摄像头单价: ¥{camera_price:,.0f}")
     print()
     
     # 分析不同安装高度的效果
@@ -47,7 +49,7 @@ def advanced_example():
     for height in heights_to_test:
         result = calculator.calculate_camera_count(
             sandbox_width, sandbox_height, height,
-            horizontal_fov, vertical_fov, overlap_ratio=0.15
+            horizontal_fov, vertical_fov, overlap_ratio=0.15, camera_price=camera_price
         )
         
         complexity = estimate_installation_complexity(
@@ -76,7 +78,7 @@ def advanced_example():
     
     optimal_result = calculator.calculate_optimal_height(
         sandbox_width, sandbox_height, horizontal_fov, vertical_fov,
-        max_cameras=20  # 限制最多20个摄像头
+        max_cameras=20, camera_price=camera_price  # 限制最多20个摄像头
     )
     
     if optimal_result['configuration']:

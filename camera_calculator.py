@@ -49,7 +49,8 @@ class CameraCalculator:
     
     def calculate_camera_count(self, sandbox_width: float, sandbox_height: float, 
                              camera_height: float, horizontal_fov: float, 
-                             vertical_fov: float, overlap_ratio: float = 0.2) -> Dict[str, Any]:
+                             vertical_fov: float, overlap_ratio: float = 0.2,
+                             camera_price: float = 2000.0) -> Dict[str, Any]:
         """
         计算完全覆盖沙盘所需的摄像头数量
         
@@ -60,6 +61,7 @@ class CameraCalculator:
             horizontal_fov: 水平视场角（度）
             vertical_fov: 垂直视场角（度）
             overlap_ratio: 重叠比例（默认20%）
+            camera_price: 摄像头单价（元，默认2000元）
             
         Returns:
             Dict: 包含摄像头数量和布局信息的字典
@@ -93,9 +95,8 @@ class CameraCalculator:
         sandbox_area = sandbox_width * sandbox_height
         coverage_ratio = min(total_coverage_area / sandbox_area, 1.0) if sandbox_area > 0 else 0
         
-        # 计算成本估算（基础估算）
-        estimated_cost_per_camera = 2000  # 假设每个摄像头2000元
-        total_cost = total_cameras * estimated_cost_per_camera
+        # 计算成本估算
+        total_cost = total_cameras * camera_price
         
         self.camera_positions = camera_positions
         
@@ -114,6 +115,7 @@ class CameraCalculator:
             'coverage_ratio': coverage_ratio,
             'overlap_ratio': overlap_ratio,
             'total_cost': total_cost,
+            'camera_price': camera_price,
             'sandbox_dimensions': {
                 'width': sandbox_width,
                 'height': sandbox_height,
@@ -123,7 +125,7 @@ class CameraCalculator:
     
     def calculate_optimal_height(self, sandbox_width: float, sandbox_height: float,
                                horizontal_fov: float, vertical_fov: float,
-                               max_cameras: int = None) -> Dict[str, Any]:
+                               max_cameras: int = None, camera_price: float = 2000.0) -> Dict[str, Any]:
         """
         计算最优安装高度
         
@@ -133,6 +135,7 @@ class CameraCalculator:
             horizontal_fov: 水平视场角（度）
             vertical_fov: 垂直视场角（度）
             max_cameras: 最大摄像头数量限制
+            camera_price: 摄像头单价（元，默认2000元）
             
         Returns:
             Dict: 最优高度和对应的配置信息
@@ -143,7 +146,7 @@ class CameraCalculator:
         for height in np.arange(1.0, 10.1, 0.5):
             result = self.calculate_camera_count(
                 sandbox_width, sandbox_height, height, 
-                horizontal_fov, vertical_fov
+                horizontal_fov, vertical_fov, camera_price=camera_price
             )
             
             # 如果设置了最大摄像头数量限制
@@ -165,7 +168,7 @@ class CameraCalculator:
             for height in np.arange(1.0, 10.1, 0.5):
                 result = self.calculate_camera_count(
                     sandbox_width, sandbox_height, height, 
-                    horizontal_fov, vertical_fov
+                    horizontal_fov, vertical_fov, camera_price=camera_price
                 )
                 if result['total_cameras'] < min_cameras:
                     min_cameras = result['total_cameras']

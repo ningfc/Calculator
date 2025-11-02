@@ -62,6 +62,7 @@ def main():
         # 高级设置
         st.subheader("⚙️ 高级设置")
         overlap_ratio = st.slider("重叠比例", min_value=0.0, max_value=0.5, value=0.2, step=0.05)
+        camera_price = st.number_input("摄像头单价 (元)", min_value=100.0, max_value=50000.0, value=2000.0, step=100.0)
         max_cameras = st.number_input("最大摄像头数量限制 (0=无限制)", min_value=0, max_value=100, value=0)
         
         # 计算按钮
@@ -77,7 +78,7 @@ def main():
         try:
             result = calculator.calculate_camera_count(
                 sandbox_width, sandbox_height, camera_height,
-                horizontal_fov, vertical_fov, overlap_ratio
+                horizontal_fov, vertical_fov, overlap_ratio, camera_price
             )
             
             # 显示关键指标
@@ -102,7 +103,7 @@ def main():
             config_data = {
                 "参数": [
                     "沙盘尺寸", "摄像头布局", "安装高度", "视场角",
-                    "单摄像头覆盖", "有效覆盖", "摄像头间距", "重叠比例"
+                    "单摄像头覆盖", "有效覆盖", "摄像头间距", "重叠比例", "摄像头单价"
                 ],
                 "数值": [
                     f"{sandbox_width} × {sandbox_height} 米",
@@ -112,7 +113,8 @@ def main():
                     f"{result['coverage_per_camera']['width']:.1f} × {result['coverage_per_camera']['height']:.1f} 米",
                     f"{result['effective_coverage']['width']:.1f} × {result['effective_coverage']['height']:.1f} 米",
                     f"{result['spacing_x']:.1f} × {result['spacing_y']:.1f} 米",
-                    f"{overlap_ratio*100:.0f}%"
+                    f"{overlap_ratio*100:.0f}%",
+                    f"¥{camera_price:,.0f}"
                 ]
             }
             
@@ -202,7 +204,7 @@ def main():
         with st.spinner("正在计算最优配置..."):
             max_cams = max_cameras if max_cameras > 0 else None
             optimal_result = calculator.calculate_optimal_height(
-                sandbox_width, sandbox_height, horizontal_fov, vertical_fov, max_cams
+                sandbox_width, sandbox_height, horizontal_fov, vertical_fov, max_cams, camera_price
             )
             
             st.subheader("🏆 最优配置")
@@ -267,6 +269,7 @@ def generate_config_report(result: dict, complexity: dict) -> str:
 布局方式: {result['cameras_x']} × {result['cameras_y']} 阵列
 安装高度: {result['coverage_per_camera']['camera_height']} 米
 视场角: {result['coverage_per_camera']['horizontal_fov']}° × {result['coverage_per_camera']['vertical_fov']}°
+摄像头单价: ¥{result['camera_price']:,.0f}
 
 覆盖范围
 --------

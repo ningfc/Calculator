@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  camera-calculator:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONPATH=/app
+      - MPLBACKEND=Agg
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+    volumes:
+      - ./output:/app/output
+    restart: unless-stopped
+
+  camera-calculator-dev:
+    build: .
+    ports:
+      - "8502:8501"
+    environment:
+      - PYTHONPATH=/app
+      - MPLBACKEND=Agg
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - STREAMLIT_THEME_BASE=light
+    volumes:
+      - .:/app
+      - ./output:/app/output
+    command: streamlit run main.py --server.port=8501 --server.address=0.0.0.0 --server.runOnSave=true
+    restart: unless-stopped
